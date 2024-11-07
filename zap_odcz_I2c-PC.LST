@@ -1,0 +1,342 @@
+00000h                                                           ; zapis / odczyt pamieci AT24Cxxx -I2C, podlacz.-SCL-PC.4, SDA- PC.0 portu uzytkownika 8255
+00000h                                                           ; PC.0  SDA-pin 18 ZU50, PC.4 SCL-pin 22  dla ZU50 lub /SDA-14a, SCL 13a dla ZU64 /
+00000h            CI:                   EQU       0FFC6H         ; CI - pobranie znaku z klawiatury; czekanie az puszczony a nastepnie wcisniety
+00000h            CSTS:                 EQU       0FFC3H         ; badanie, czy klawisz wcisniety? CY=1 wcisniety, A-kod tablicowy klawisza
+00000h            CIM:                  EQU       0184H          ;                                    CY=0 klawisz puszczony
+00000h            PRINT:                EQU       1D4H           ; wysw. komunikatu wg (HL) plus PWYS
+00000h            PARAM:                EQU       01F4H          ; pobiera bajty do hl, podac PWYS
+00000h            EXPR:                 EQU       0213H          ; pob. liczb na stos, rej. C ile
+00000h            PA:                   EQU       0E0H           ; port uzytkownika; jesli dolozymy nastepna plytke MIK 89_TURBO, zmieniamy E0 na
+00000h            PB:                   EQU       PA+1           ;wlasciwy adres /E4 lub E8/, wg zworki J3
+00000h            PC:                   EQU       PA+2
+00000h            CONTR:                EQU       PA+3           ; slowo kontrolne
+00000h            P_SDA:                EQU       PC             ; port podlaczenia linii DATA /do wyboru
+00000h            ZAP_EEP:              EQU       0A0H           ; taki "adres" zapisu ma pamiec AT24Cxxx, jesli zworki sa ustawione na 0, piny 1,2 i 3 do GND
+00000h                                                           ; A1 na odczyt
+00000h            POCZ_EEP:             EQU       0FEA2H         ; tu zapamietany adres pocz. zapisu EEPROM
+00000h                                            
+00000h                                  ORG       #C000
+0C000h            KLAW_G:                         
+0C000h 3166FF                           LD        SP,0FF66H
+0C003h 21B6C1                           LD        HL,EEP_G       ; wlaczenie obslugi klawisza "G" w NMI
+0C006h 22C7FF                           LD        (CI+1),HL
+0C009h            ZAP_STR:                        
+0C009h 3166FF                           LD        SP,0FF66H
+0C00Ch 21C1C1                           LD        HL,Z_O
+0C00Fh CDD401                           CALL      PRINT
+0C012h 80                               DEFB      80H
+0C013h            ZAP_ODCZ:                       
+0C013h CDC3FF                           CALL      CSTS           ; pobierz klawisz, tylko 0 lub 1, reszta klawiszy ignorowana
+0C016h 30FB                             JR        NC,ZAP_ODCZ    ; nie wcisnieto zadnego klawisza
+0C018h FE00                             CP        0
+0C01Ah 2807                             JR        Z,ZAPIS
+0C01Ch FE01                             CP        1
+0C01Eh CA76C0                           JP        Z,ODCZYT
+0C021h 18F0                             JR        ZAP_ODCZ
+0C023h                                            
+0C023h            ZAPIS:                                         ; zapis do EEPROM <CAod> <CAdo> i <EEPROMod>
+0C023h                                                           ; pobranie 3. parametrow, pamiec /8-64kB/
+0C023h D7                               RST       10H
+0C024h 40                               DEFB      40H            ; czysc 4 cyfry
+0C025h 21CAC1                           LD        HL,CAOD
+0C028h CDCFC0                           CALL      POB_ADR
+0C02Bh E5                               PUSH      HL             ; na stosie adres pocz. obszaru w CA zapisu
+0C02Ch 21CFC1                           LD        HL,CADO
+0C02Fh CDCFC0                           CALL      POB_ADR
+0C032h E5                               PUSH      HL             ; koniec obszaru do zapisu
+0C033h 21D4C1                           LD        HL,EEOD
+0C036h CDCFC0                           CALL      POB_ADR
+0C039h E5                               PUSH      HL
+0C03Ah DDE1                             POP       IX             ; do obliczen, czy koniec strony podczas zapisu
+0C03Ch 22A2FE                           LD        (POCZ_EEP),HL  ; zapamietanie - poczatek wpisu do EEPROM
+0C03Fh E1                               POP       HL             ; do /CA/
+0C040h D1                               POP       DE             ; od /CA/
+0C041h ED52                             SBC       HL,DE
+0C043h 23                               INC       HL
+0C044h 23                               INC       HL
+0C045h 4D                               LD        C,L
+0C046h 44                               LD        B,H            ; w BC ilosc bajtow do zapisu w EEPROM 24Cxxx
+0C047h                                                           ;
+0C047h D5                               PUSH      DE
+0C048h 1EA0                             LD        E,ZAP_EEP      ; "adres" pamieci, tu A0, jako 1. pamiec /piny 1,2,i 3 do GND
+0C04Ah 2AA2FE                           LD        HL,(POCZ_EEP)  ; poczatkowy adres zapisu w EEPROM
+0C04Dh CDDEC0                           CALL      WPISZ_ADR
+0C050h            ZAP_EEPROM:                                    ; zapis bajtow do EEPROM
+0C050h                                                           ;ld a, zap_EEP; np. A0 "adres" do zapisu pamieci EEPROM AT24Cxxx
+0C050h                                                           ;ld e, zap_EEP
+0C050h                                                           ;call wpisz_adr ; poczatek wpisu do EEPROM
+0C050h                                            
+0C050h E1                               POP       HL             ; pocz. obszaru w CA do zapisu
+0C051h            ZAP1:                           
+0C051h 5E                               LD        E,(HL)
+0C052h CD14C1                           CALL      ZAP_BAJT
+0C055h CDD8C0                           CALL      SPRAWDZ        ; BC=BC-1 i czy BC=0
+0C058h 2862                             JR        Z,ZAKONCZ
+0C05Ah 23                               INC       HL
+0C05Bh DD23                             INC       IX
+0C05Dh                                                           ; sprawdzenie czy koniec strony zapisu EEPROM
+0C05Dh DD7D                             LD        A,IXL          ;dfb 0ddh, 7dh ;  ld ml. bity IX do A
+0C05Fh E61F                             AND       1FH            ; sprawdz mlodsze bity i 4. bit /koniec str. co 32/20h bajty
+0C061h                                                           ; 3Fh - co 64/40h bajty, 7Fh - co 128/80h bajtów, FF - co 256/FFh bajtów
+0C061h FE00                             CP        0H
+0C063h 20EC                             JR        NZ,ZAP1
+0C065h                                                           ; koniec strony: 0,20, 40, itd, przystosowane do EEPROM DS3231 8- kB, 32 kB, 64kB
+0C065h            K_STR_Z64:                                     ; koniec strony, wpisz nowy adres do EEprom
+0C065h C5                               PUSH      BC
+0C066h E5                               PUSH      HL
+0C067h CD00C1                           CALL      STOP
+0C06Ah DDE5                             PUSH      IX
+0C06Ch E1                               POP       HL
+0C06Dh 1EA0                             LD        E,ZAP_EEP
+0C06Fh CDDEC0                           CALL      WPISZ_ADR
+0C072h E1                               POP       HL
+0C073h C1                               POP       BC
+0C074h 18DB                             JR        ZAP1
+0C076h                                                           ;***********
+0C076h            ODCZYT:                                        ; odczyt pamieci AT24Cxxx /8-64kB/
+0C076h D7                               RST       10H
+0C077h 40                               DEFB      40H            ; czysc 4 cyfry
+0C078h 21D4C1                           LD        HL,EEOD
+0C07Bh CDCFC0                           CALL      POB_ADR
+0C07Eh 22A2FE                           LD        (POCZ_EEP),HL  ; zapamietanie - poczatek odczytu w EEPROM
+0C081h 21D9C1                           LD        HL,EEDO
+0C084h CDCFC0                           CALL      POB_ADR
+0C087h E5                               PUSH      HL             ; na stos - koniec obszaru do odczytu w EEPROM
+0C088h 21CAC1                           LD        HL,CAOD
+0C08Bh CDCFC0                           CALL      POB_ADR
+0C08Eh E5                               PUSH      HL
+0C08Fh DDE1                             POP       IX             ; poczatek zapisu w RAM CA odczytywanych bajtow
+0C091h                                            
+0C091h E1                               POP       HL             ; do /w CA80/
+0C092h ED5BA2FE                         LD        DE,(POCZ_EEP)  ; od /EEPROM/
+0C096h ED52                             SBC       HL,DE
+0C098h 23                               INC       HL
+0C099h 23                               INC       HL
+0C09Ah 4D                               LD        C,L
+0C09Bh 44                               LD        B,H            ; w BC ilosc bajtow do odczytu z EEPROM 24Cxxx
+0C09Ch 1EA0                             LD        E,ZAP_EEP      ; bedzie wpis adresu, dlatego A0
+0C09Eh 2AA2FE                           LD        HL,(POCZ_EEP)  ; poczatkowy adres odczytu w EEPROM
+0C0A1h C5                               PUSH      BC             ; ilosc bajtow do odczytu
+0C0A2h CDDEC0                           CALL      WPISZ_ADR      ; start_I2C, wpis AO , wpis L, wpis H
+0C0A5h CDEFC0                           CALL      START_I2C      ; ponowny start_I2C
+0C0A8h 1EA1                             LD        E,ZAP_EEP+1    ; ustaw pamiec na odczyt np. A1
+0C0AAh CD14C1                           CALL      ZAP_BAJT
+0C0ADh C1                               POP       BC             ; odtwórz ilosc bajtow do odczytu
+0C0AEh            CZYT_BAJTY:                     
+0C0AEh CD53C1                           CALL      CZYT_BAJT      ; odczytuje bajt i zapisuje w RAM CA80 wg (IX)
+0C0B1h CD7CC1                           CALL      M_ACK          ; wystaw ACK
+0C0B4h CDD8C0                           CALL      SPRAWDZ        ; czy BC = 0, koniec odczytu
+0C0B7h 20F5                             JR        NZ,CZYT_BAJTY
+0C0B9h                                                           ; koniec odczytu
+0C0B9h CD89C1                           CALL      RESET          ; zeruj pamiec 24Cxxx, wyswietl adres koncowy,
+0C0BCh                                            
+0C0BCh            ZAKONCZ:                        
+0C0BCh DD23                             INC       IX             ; adres w EEPROM
+0C0BEh CD00C1                           CALL      STOP
+0C0C1h CD89C1                           CALL      RESET
+0C0C4h 21DEC1                           LD        HL,KON         ; koniec
+0C0C7h CDD401                           CALL      PRINT
+0C0CAh 44                               DEFB      44H
+0C0CBh CF                               RST       8
+0C0CCh C309C0                           JP        ZAP_STR
+0C0CFh                                            
+0C0CFh            POB_ADR:                        
+0C0CFh                                                           ;rst 10h
+0C0CFh                                                           ;defb 40h ; czysc 4 cyfry
+0C0CFh CDD401                           CALL      PRINT
+0C0D2h 44                               DEFB      44H
+0C0D3h CDF401                           CALL      PARAM          ; pobierz adres "od"
+0C0D6h 40                               DEFB      40H
+0C0D7h C9                               RET       
+0C0D8h                                            
+0C0D8h            SPRAWDZ:                                       ; zmniejsza BC o 1 - przy zapisie o odczycie pa. EEprom
+0C0D8h 0B                               DEC       BC
+0C0D9h AF                               XOR       A
+0C0DAh B9                               CP        C
+0C0DBh C0                               RET       NZ
+0C0DCh B8                               CP        B
+0C0DDh C9                               RET       
+0C0DEh                                            
+0C0DEh            WPISZ_ADR:                                     ; wpis adresu poczatkowego zapisu
+0C0DEh                                                           ; przed wywolaniem w E adres pamieci np. A XXX R/W
+0C0DEh                                                           ; WEJ: E - "adres zapisu" pamieci EEprom /np. A0, A2, A4 itd
+0C0DEh                                                           ; HL - adres poczatku zapisu w EEprom
+0C0DEh C5                               PUSH      BC
+0C0DFh CDEFC0                           CALL      START_I2C
+0C0E2h CD14C1                           CALL      ZAP_BAJT
+0C0E5h 5C                               LD        E,H            ; starszy bajt adresu w EEPROM
+0C0E6h CD14C1                           CALL      ZAP_BAJT
+0C0E9h 5D                               LD        E,L            ; mLodszy bajt adresu
+0C0EAh CD14C1                           CALL      ZAP_BAJT
+0C0EDh C1                               POP       BC
+0C0EEh C9                               RET       
+0C0EFh                                            
+0C0EFh            START_I2C:                                     ; procedura START dla urzadzenia z I2C
+0C0EFh 0EE3                             LD        C,CONTR
+0C0F1h            START_E:                        
+0C0F1h 3E9B                             LD        A,9BH          ; konfiguracja portów  PA, PB i PC WEJ
+0C0F3h ED79                             OUT       (C),A
+0C0F5h 00                               NOP       
+0C0F6h 3E8A                             LD        A,8AH          ; PA i PB WYJ, PC0-3 - WYJ, PC4-7 WEJ
+0C0F8h ED79                             OUT       (C),A
+0C0FAh 00                               NOP       
+0C0FBh 3E80                             LD        A,80H          ;PA, PB, PC jako WYJ
+0C0FDh ED79                             OUT       (C),A
+0C0FFh C9                               RET       
+0C100h                                            
+0C100h            STOP:                                          ; procedura STOP dla urzadzenia /z komunikacja I2C/
+0C100h 0EE3                             LD        C,CONTR
+0C102h 3E8A                             LD        A,8AH
+0C104h ED79                             OUT       (C),A
+0C106h 00                               NOP       
+0C107h 3E9B                             LD        A,9BH
+0C109h ED79                             OUT       (C),A
+0C10Bh 00                               NOP       
+0C10Ch 3E90                             LD        A,90H          ; PA - WEJ, PB i PC WYJ
+0C10Eh ED79                             OUT       (C),A
+0C110h 76                               HALT      
+0C111h 76                               HALT      
+0C112h 76                               HALT      
+0C113h C9                               RET       
+0C114h                                            
+0C114h            ZAP_BAJT:                                      ; wpis bajtu do EEPROM, w E dana do zapisu
+0C114h                                                           ; PC4/SCL, PC0/SDA, jesli PA, PC jako WEJSCIE
+0C114h C5                               PUSH      BC
+0C115h D5                               PUSH      DE
+0C116h                                                           ;ld a, (CONTR) ; rej. C - wybór portu - E3 (zlacze uzytk.) lub E7 (dodatkowe)
+0C116h 0EE3                             LD        C,CONTR
+0C118h 1608                             LD        D,08H          ;ilosc bitów
+0C11Ah            ZAP:                            
+0C11Ah 7B                               LD        A,E            ; odtworzenie danej do wpisu
+0C11Bh 07                               RLCA                     ; przesun na lewo /na znacznik C/
+0C11Ch 5F                               LD        E,A            ; zapamietanie
+0C11Dh 3824                             JR        C,ZAPJEDYNKE   ; wyslij "1"
+0C11Fh                                                           ;wyslanie "0"
+0C11Fh 3E80                             LD        A,80H          ; PA i PC jako WYJ/ RES SDA i RES SCL stan niski
+0C121h ED79                             OUT       (C),A          ; ustawia dane "0" na SDA
+0C123h            ZEGAR:                          
+0C123h CD49C1                           CALL      CLK
+0C126h 15                               DEC       D              ; czy 8. bit?
+0C127h 20F1                             JR        NZ,ZAP
+0C129h                                                           ; ACK:  ; info dla SLAVE, ze koniec bajtu
+0C129h 3E9B                             LD        A,9BH          ; PA PC WEJ, poczatek 9. cyklu SCL "1"
+0C12Bh ED79                             OUT       (C),A
+0C12Dh 00                               NOP       
+0C12Eh C5                               PUSH      BC
+0C12Fh 06FF                             LD        B,0FFH         ; ilosc prób sprawdz. ACK
+0C131h            ACK_0:                          
+0C131h 05                               DEC       B
+0C132h CAA3C1                           JP        Z,BLAD_ACK
+0C135h DBE2                             IN        A,(P_SDA)      ; odczyt portu 
+0C137h CB47                             BIT       0H,A           ; testuj bit 0 (SDA=0 potwierdzenie, SDA=1 brak
+0C139h 20F6                             JR        NZ,ACK_0       ; czekaj az ACK
+0C13Bh C1                               POP       BC
+0C13Ch 3E90                             LD        A,90H
+0C13Eh ED79                             OUT       (C),A          ;PA WEJ, PC WYJ, koniec 9. cyklu SCL /SDA "1" SCL "0"
+0C140h D1                               POP       DE
+0C141h C1                               POP       BC
+0C142h C9                               RET       
+0C143h                                            
+0C143h            ZAPJEDYNKE:                     
+0C143h 3E90                             LD        A,90H          ;  PA WEJ/SDA/, PC WYJ/SCL/
+0C145h ED79                             OUT       (C),A          ; ustawia dane "1" na SDA
+0C147h 18DA                             JR        ZEGAR
+0C149h                                            
+0C149h            CLK:                                           ; port C.4 /
+0C149h 0D                               DEC       C              ; E2-port PC zlacze systemowe lub E6-zlacze uzytk.
+0C14Ah 3E10                             LD        A,10H
+0C14Ch ED79                             OUT       (C),A          ; SET SCL
+0C14Eh AF                               XOR       A              ; RES SCL
+0C14Fh ED79                             OUT       (C),A
+0C151h 0C                               INC       C              ; C = E3 lub E7
+0C152h C9                               RET       
+0C153h                                            
+0C153h            CZYT_BAJT:                                     ; odczyt bajtu i zapis do RAM wg (IX)
+0C153h C5                               PUSH      BC
+0C154h 0EE3                             LD        C,CONTR
+0C156h                                                           ;    CZYT1:
+0C156h 3E90                             LD        A,90H          ; PA WEJ, PC WYJ SDA "1" SCL "0"
+0C158h ED79                             OUT       (C),A
+0C15Ah 1608                             LD        D,8            ; D - il. bitów = 8, E - jako bufor do odbieranych bitów = 0
+0C15Ch            CZYT:                                          ; mo¿e byæ tylko ld d, 8  bo rej E "idzie" od zera
+0C15Ch CD73C1                           CALL      SCLH           ; ustaw SCL na H
+0C15Fh 00                               NOP       
+0C160h 00                               NOP                      ; opoznienie
+0C161h DBE2                             IN        A,(P_SDA)      ; odczyt portu
+0C163h 0F                               RRCA                     ; przesun na CY
+0C164h CB13                             RL        E              ; przesuñ CY na bit 0 rej. E
+0C166h CD78C1                           CALL      SCLL           ; ustaw SCL na L
+0C169h 15                               DEC       D
+0C16Ah 20F0                             JR        NZ,CZYT        ; czy ostatni bit?
+0C16Ch DD7300                           LD        (IX+0H),E      ; zapisanie w pamiêci
+0C16Fh DD23                             INC       IX             ; ustaw RAM na zapis nastêpnego bajtu
+0C171h C1                               POP       BC
+0C172h C9                               RET       
+0C173h            SCLH:                                          ; SCL /Port PC4/ na H
+0C173h 3E10                             LD        A,10H
+0C175h ED79                             OUT       (C),A
+0C177h C9                               RET       
+0C178h                                            
+0C178h            SCLL:                                          ; SCL na L
+0C178h AF                               XOR       A              ; ustaw SCL /port PC4/ na L
+0C179h ED79                             OUT       (C),A
+0C17Bh C9                               RET       
+0C17Ch                                            
+0C17Ch            M_ACK:                                         ; Master /CA80/ wystawia ACK /"0"/ na SDA
+0C17Ch C5                               PUSH      BC
+0C17Dh 0EE3                             LD        C,CONTR        ; np. E3,E8 lub EC
+0C17Fh                                                           ;m_ack1:
+0C17Fh 3E80                             LD        A,80H          ; PA, PB, PC - WYJ, stan L
+0C181h ED79                             OUT       (C),A          ; ustaw SDA na L /czytaj nastêpne bajty
+0C183h CD49C1                           CALL      CLK
+0C186h 00                               NOP                      ; opoznienie
+0C187h C1                               POP       BC
+0C188h C9                               RET       
+0C189h                                            
+0C189h            RESET:                                         ; reset pamieci AT24C16/512
+0C189h 0EE3                             LD        C,CONTR
+0C18Bh CDEFC0                           CALL      START_I2C
+0C18Eh 3E90                             LD        A,90H
+0C190h ED79                             OUT       (C),A
+0C192h 0609                             LD        B,9H           ; 9. cykli zegara
+0C194h            RES2:                           
+0C194h CD49C1                           CALL      CLK
+0C197h 05                               DEC       B
+0C198h 20FA                             JR        NZ,RES2
+0C19Ah CDEFC0                           CALL      START_I2C
+0C19Dh 00                               NOP       
+0C19Eh 00                               NOP       
+0C19Fh CD00C1                           CALL      STOP
+0C1A2h C9                               RET       
+0C1A3h                                            
+0C1A3h            BLAD_ACK:                                      ; jesli po 255 probach EEPROM sie nie zglosi
+0C1A3h D5                               PUSH      DE             ; ochrona E
+0C1A4h 21E3C1                           LD        HL,NO_ACK      ;  "no_ACK"
+0C1A7h CDD401                           CALL      PRINT          ; wyœw. "no ACK" na ca80
+0C1AAh 44                               DEFB      44H            ; PWYSW
+0C1ABh 3EE3                             LD        A,CONTR
+0C1ADh 6F                               LD        L,A            ; "adres pamieci"
+0C1AEh D1                               POP       DE             ; odtworzenie E
+0C1AFh 63                               LD        H,E            ; port podlaczenia pamieci
+0C1B0h E7                               RST       20H            ; wysw. rej. HL
+0C1B1h 40                               DEFB      40H
+0C1B2h CF                               RST       8              ; CF czekaj na klawisz
+0C1B3h C309C0                           JP        ZAP_STR
+0C1B6h                                            
+0C1B6h            EEP_G:                                         ; jesli klawisz "G", to skok do pocz. programu
+0C1B6h CD8401                           CALL      CIM
+0C1B9h F5                               PUSH      AF
+0C1BAh FE10                             CP        10H            ; klawisz "G"
+0C1BCh CA09C0                           JP        Z,ZAP_STR
+0C1BFh F1                               POP       AF
+0C1C0h C9                               RET       
+0C1C1h                                                           ; napisy na CA80
+0C1C1h BF5B777386 Z_O:                  DEFB      0BFH,5BH,77H,73H,86H,5CH,5EH,39H,255; "0 zap 1 odc"
+0C1CAh 39775C5EFF CAOD:                 DEFB      39H,77H,5CH,5EH,255
+0C1CFh 39775E5CFF CADO:                 DEFB      39H,77H,5EH,5CH,255
+0C1D4h 79795C5EFF EEOD:                 DEFB      79H,79H,5CH,5EH,255
+0C1D9h 79795E5CFF EEDO:                 DEFB      79H,79H,5EH,5CH,255
+0C1DEh 0079545EFF KON:                  DEFB      0,79H,54H,5EH,255
+0C1E3h 54773978FF NO_ACK:               DEFB      54H,77H,39H,78H,255; "no ACK" dla ca80
+0C1E8h            KON_CA:               EQU       ($-1)
+0C1E8h                                            
