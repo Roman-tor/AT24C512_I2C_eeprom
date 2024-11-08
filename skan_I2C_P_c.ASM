@@ -1,8 +1,9 @@
-  ; program skanuje szynê I2C i wyszukuje podlaczone urz¹dzenia
-  ; na CA80 wyœwietla "adres" do zapisu /CYF4, CYF3/ i odczytu /CYF1, CYF0/
+  ; program skanuje szynÄ™ I2C i wyszukuje podlaczone urzÄ…dzenia
+  ; na CA80 wyÅ›wietla "adres" do zapisu /CYF4, CYF3/ i odczytu /CYF1, CYF0/
   ; interfejs I2C podlaczony do:
-  ; SDA - /PC0/ do pinu 18 z³acza uzytkownika /port 8255 na p³ytce MIK89
-  ; SCL - /PC4/ do pinu 22 z³¹cza u¿ytkwnika j.w.
+  ; SDA - /PC0/ do pinu 18 zÅ‚acza uzytkownika /port 8255 na pÅ‚ytce MIK89
+  ; SCL - /PC4/ do pinu 22 zÅ‚Ä…cza uÅ¼ytkwnika j.w.
+  ; lub /SDA-14a, SCL 13a dla ZU64 / 
   ; +5V - do pinu 48 zlacza uzytkownika j.w.
   ; GND - do pinu 50 zlacza uzytkownika j.w.
 CTRL:   equ 0E3h  ; slowo kontrolne portu uzytkownika /E3/
@@ -71,11 +72,11 @@ port_C: equ CTRL-1
             ; WYJ: 0 -  brak urzadzenia, w rej. L adres urzadzenia
  ld E, L
     zap1:
- LD D, 08H  ;ilosc bitów
+ LD D, 08H  ;ilosc bitÃ³w
      ZAP:
  LD A, E  ; odtworzenie danej do wpisu
- RLCA     ; przesuñ na lewo /na znacznik C/
- LD E, A  ; zapamiêtanie
+ RLCA     ; przesuÅ„ na lewo /na znacznik C/
+ LD E, A  ; zapamiÄ™tanie
  JR C, ZAPJEDYNKE  ; wyslij "1"
      ;wyslanie "0"
  LD A, 80H   ; PA i PC jako WYJ/ RES SDA i RES SCL
@@ -88,13 +89,13 @@ port_C: equ CTRL-1
  LD A, 89H  ; PA/9b/ PC WEJ, poczatek 9. cyklu SCL "1" /PC->89
  OUT (CTRL), A
  NOP
- ld b, 0FFh ; ilosc prób sprawdz. ACK
+ ld b, 0FFh ; ilosc prÃ³b sprawdz. ACK
     ACK_0:
  dec b
  jr z, skan_d
  IN A, (port_c) ; odczyt portu PA
  BIT 0H, A ; testuj bit 0 (SDA=0 potwierdzenie, SDA=1 brak
- JR NZ, ACK_0 ; czekaj a¿ ACK
+ JR NZ, ACK_0 ; czekaj aÅ¼ ACK
  LD A, 90H
  OUT (CTRL), A  ;PA WEJ, PC WYJ, koniec 9. cyklu SCL /SDA "1" SCL "0"
  call stop
@@ -124,14 +125,14 @@ port_C: equ CTRL-1
  RET
 
      start_I2C: ; procedura START dla pamieci typu 24Cxxx, I2C
- ld a, 89h ; konfiguracja portów  PA/9b/, PB i PC WEJ pc89
+ ld a, 89h ; konfiguracja portÃ³w  PA/9b/, PB i PC WEJ pc89
  out (CTRL), a
  ld a, 88h ; PA/8A i PB WYJ, PC0-3 - WYJ, PC4-7 WEJ  Pc/88
  out (CTRL), a
  ld a, 80h ;PA, PB, PC jako WYJ
  out (CTRL),a
  ret
-     stop: ; procedura STOP dla pamiêci typu 24Cxxx, I2C
+     stop: ; procedura STOP dla pamiÄ™ci typu 24Cxxx, I2C
  ld a, 80h ; Pa /80 , Pc 80
  out (CTRL), a
  ld a, 88h ; Pa /88  Pc 88
