@@ -1,0 +1,144 @@
+00000h                                                           ; program skanuje szynê I2C i wyszukuje podlaczone urz¹dzenia
+00000h                                                           ; na CA80 wyœwietla "adres" do zapisu /CYF4, CYF3/ i odczytu /CYF1, CYF0/
+00000h                                                           ; interfejs I2C podlaczony do:
+00000h                                                           ; SDA - /PC0/ do pinu 18 z³acza uzytkownika /port 8255 na p³ytce MIK89
+00000h                                                           ; SCL - /PC4/ do pinu 22 z³¹cza u¿ytkwnika j.w.
+00000h                                                           ; +5V - do pinu 48 zlacza uzytkownika j.w.
+00000h                                                           ; GND - do pinu 50 zlacza uzytkownika j.w.
+00000h            CTRL:                 EQU       0E3H           ; slowo kontrolne portu uzytkownika /E3/
+00000h            PORT_A:               EQU       CTRL-3
+00000h            PORT_B:               EQU       CTRL-2
+00000h            PORT_C:               EQU       CTRL-1
+00000h                                            
+00000h                                  ORG       0EA00H
+0EA00h            SKAN:                           
+0EA00h D7                               RST       10H
+0EA01h 80                               DEFB      80H
+0EA02h            SKAN11:                         
+0EA02h 3EE3                             LD        A,CTRL         ; tu wpisujemy port jesli zlacze uzytkownik to E3
+0EA04h                                            
+0EA04h 2601                             LD        H,1            ; licznik urzadzen
+0EA06h 2E0E                             LD        L,#E           ; poczatkowy adres /odczyt/, bedzie zwiekszany o 2
+0EA08h                                                           ; az do znalezienia urzadzenia
+0EA08h                                            
+0EA08h            SKAN1:                          
+0EA08h CD95EA                           CALL      START_I2C
+0EA0Bh E5                               PUSH      HL
+0EA0Ch CD54EA                           CALL      ZAP_BAJT
+0EA0Fh FE00                             CP        0              ; rej. B=0, wszystkie proby
+0EA11h 280F                             JR        Z,SKAN_D       ; dalej
+0EA13h                                                           ; znaleziono urzadzenie
+0EA13h 7D                               LD        A,L
+0EA14h DF                               RST       18H            ; wysw. rej. A
+0EA15h 23                               DEFB      23H            ; PWYSW
+0EA16h 3C                               INC       A
+0EA17h DF                               RST       18H
+0EA18h 20                               DEFB      20H
+0EA19h 7C                               LD        A,H
+0EA1Ah DF                               RST       18H
+0EA1Bh 17                               DEFB      17H            ; wysw. nr pamieci /1-7/
+0EA1Ch CF                               RST       8              ; CF czekaj na wcisniecie klawisza
+0EA1Dh 2C                               INC       L
+0EA1Eh 2C                               INC       L
+0EA1Fh 24                               INC       H              ; licznik urzadzen /nr pamieci /od 1 do max 8/ w moim przypadku 
+0EA20h 18E6                             JR        SKAN1          ; wyszukaj nastepne urzadzenie
+0EA22h                                            
+0EA22h            SKAN_D:                         
+0EA22h 2C                               INC       L
+0EA23h 2C                               INC       L
+0EA24h 7D                               LD        A,L
+0EA25h FEA0                             CP        0A0H
+0EA27h 3801                             JR        C,SK2
+0EA29h 00                               NOP                      ;inc H; nr pamieci /1-8/  
+0EA2Ah            SK2:                            
+0EA2Ah FEFE                             CP        0FEH           ; ostatni mozliwy adres "odczytu"
+0EA2Ch 20DA                             JR        NZ,SKAN1
+0EA2Eh                                                           ; nie znaleziono urzadzenia
+0EA2Eh 2138EA                           LD        HL,BRAK
+0EA31h CDD401                           CALL      1D4H
+0EA34h 60                               DEFB      60H
+0EA35h CF                               RST       8              ; CF czekaj na wcisniecie klawisza
+0EA36h 18C8                             JR        SKAN           ; jeszcze raz
+0EA38h                                                           ;na CA80
+0EA38h 785C540679 BRAK:                 DEFB      78H,5CH,54H,6,79H,58H,0FFH;"koniec"
+0EA3Fh                                                           ; na LCD /przy szukaniu programow
+0EA3Fh DDE2                             DEFB      0DDH,0E2H      ; marker nazwy programu dla szukania w EEPROM
+0EA41h 20534B414E                       DEFM      " SKANER I2C portP3",255; koniec napisu
+0EA54h                                            
+0EA54h            ZAP_BAJT:                                      ; wpis bajtu do EEPROM, w E dana do zapisu
+0EA54h                                                           ; ustawia bity P0-P7 na PCF8574
+0EA54h                                                           ;PC4/SCL, PA0/SDA, jesli PA, PC jako WEJSCIE
+0EA54h                                                           ; WYJ: 0 -  brak urzadzenia, w rej. L adres urzadzenia
+0EA54h 5D                               LD        E,L
+0EA55h            ZAP1:                           
+0EA55h 1608                             LD        D,08H          ;ilosc bitów
+0EA57h            ZAP:                            
+0EA57h 7B                               LD        A,E            ; odtworzenie danej do wpisu
+0EA58h 07                               RLCA                     ; przesuñ na lewo /na znacznik C/
+0EA59h 5F                               LD        E,A            ; zapamiêtanie
+0EA5Ah 3822                             JR        C,ZAPJEDYNKE   ; wyslij "1"
+0EA5Ch                                                           ;wyslanie "0"
+0EA5Ch 3E80                             LD        A,80H          ; PA i PC jako WYJ/ RES SDA i RES SCL
+0EA5Eh D3E3                             OUT       (CTRL),A       ; ustawia dane "0" na SDA
+0EA60h            ZEGAR:                          
+0EA60h CD84EA                           CALL      CLK
+0EA63h 15                               DEC       D              ; czy 8. bit?
+0EA64h 20F1                             JR        NZ,ZAP
+0EA66h            ACK:                            
+0EA66h 3E89                             LD        A,89H          ; PA/9b/ PC WEJ, poczatek 9. cyklu SCL "1" /PC->89
+0EA68h D3E3                             OUT       (CTRL),A
+0EA6Ah 00                               NOP       
+0EA6Bh 06FF                             LD        B,0FFH         ; ilosc prób sprawdz. ACK
+0EA6Dh            ACK_0:                          
+0EA6Dh 05                               DEC       B
+0EA6Eh 28B2                             JR        Z,SKAN_D
+0EA70h DBE2                             IN        A,(PORT_C)     ; odczyt portu PA
+0EA72h CB47                             BIT       0H,A           ; testuj bit 0 (SDA=0 potwierdzenie, SDA=1 brak
+0EA74h 20F7                             JR        NZ,ACK_0       ; czekaj a¿ ACK
+0EA76h 3E90                             LD        A,90H
+0EA78h D3E3                             OUT       (CTRL),A       ;PA WEJ, PC WYJ, koniec 9. cyklu SCL /SDA "1" SCL "0"
+0EA7Ah CDA2EA                           CALL      STOP
+0EA7Dh C9                               RET       
+0EA7Eh                                            
+0EA7Eh            ZAPJEDYNKE:                     
+0EA7Eh 3E81                             LD        A,81H          ;  PA /90/ WEJ/SDA/, PC WYJ/SCL/ PC/81
+0EA80h D3E3                             OUT       (CTRL),A       ; ustawia dane "1" na SDA
+0EA82h 18DC                             JR        ZEGAR
+0EA84h                                            
+0EA84h            CLK:                                           ; port C.4 /
+0EA84h 3E10                             LD        A,10H          ; ld a, 9
+0EA86h D3E2                             OUT       (PORT_C),A     ; SET SCL  ; out (CTRL), A
+0EA88h AF                               XOR       A              ; RES SCL          ; nop dec A
+0EA89h            CLK1:                           
+0EA89h D3E2                             OUT       (PORT_C),A     ; out (ctrl), A
+0EA8Bh C9                               RET                      ; ret
+0EA8Ch                                            
+0EA8Ch            SCLH:                                          ; SCL /Port PC4/ na H
+0EA8Ch 3E10                             LD        A,10H          ; ld A, 8
+0EA8Eh D3E2                             OUT       (PORT_C),A     ; out (ctrl), a
+0EA90h C9                               RET                      ; ret
+0EA91h                                            
+0EA91h            SCLL:                                          ; SCL na L                  ; ld A, 8    
+0EA91h AF                               XOR       A              ; ustaw SCL /port PC4/ na L   ; jr clk1
+0EA92h D3E2                             OUT       (PORT_C),A
+0EA94h C9                               RET       
+0EA95h                                            
+0EA95h            START_I2C:                                     ; procedura START dla pamieci typu 24Cxxx, I2C
+0EA95h 3E89                             LD        A,89H          ; konfiguracja portów  PA/9b/, PB i PC WEJ pc89
+0EA97h D3E3                             OUT       (CTRL),A
+0EA99h 3E88                             LD        A,88H          ; PA/8A i PB WYJ, PC0-3 - WYJ, PC4-7 WEJ  Pc/88
+0EA9Bh D3E3                             OUT       (CTRL),A
+0EA9Dh 3E80                             LD        A,80H          ;PA, PB, PC jako WYJ
+0EA9Fh D3E3                             OUT       (CTRL),A
+0EAA1h C9                               RET       
+0EAA2h            STOP:                                          ; procedura STOP dla pamiêci typu 24Cxxx, I2C
+0EAA2h 3E80                             LD        A,80H          ; Pa /80 , Pc 80
+0EAA4h D3E3                             OUT       (CTRL),A
+0EAA6h 3E88                             LD        A,88H          ; Pa /88  Pc 88
+0EAA8h D3E3                             OUT       (CTRL),A
+0EAAAh 3E89                             LD        A,89H          ; PA/89/ - WEJ, PB I PC WYJ Pc 90
+0EAACh D3E3                             OUT       (CTRL),A
+0EAAEh 76                               HALT      
+0EAAFh 76                               HALT      
+0EAB0h 76                               HALT      
+0EAB1h C9                               RET       
