@@ -2,4 +2,4 @@ program AT24C512 pozwala za zapis/odczyt popularnych pamięci EEPROM /również 
 adres AO zapis, A1 odczyt. 
 Jeśli masz inny adres, np. A2/A3 musisz zmienić wiersz 14 w pliku ASM - "zap_EEP" wpisując tam A2.
 
-Jesli nie wiesz jaki masz adres Twojej EEOROM, wykorzystaj program "SKANER_I2C", podłaczając pamięc jak wyżej.
+Jesli nie wiesz jaki masz adres Twojej EEPROM, wykorzystaj program "SKANER_I2C", podłaczając pamięc jak wyżej.
