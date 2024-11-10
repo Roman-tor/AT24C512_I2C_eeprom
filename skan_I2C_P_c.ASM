@@ -1,11 +1,12 @@
   ; program skanuje szynę I2C i wyszukuje podlaczone urządzenia
   ; na CA80 wyświetla "adres" do zapisu /CYF4, CYF3/ i odczytu /CYF1, CYF0/
   ; interfejs I2C podlaczony do:
-  ; SDA - /PC0/ do pinu 18 złacza uzytkownika /port 8255 na płytce MIK89
+  ; SDA - /PC0/ do pinu 18 złacza uzytkownika ZU /port 8255 na płytce MIK89
   ; SCL - /PC4/ do pinu 22 złącza użytkwnika j.w.
-  ; lub /SDA-14a, SCL 13a dla ZU64 / 
+  ; lub SDA - pin 14a SCL - pin 13a w ZU64
   ; +5V - do pinu 48 zlacza uzytkownika j.w.
   ; GND - do pinu 50 zlacza uzytkownika j.w.
+PRINT:  EQU 01D4h ; wysw. komunikatu na CA
 CTRL:   equ 0E3h  ; slowo kontrolne portu uzytkownika /E3/
 port_A: equ CTRL-3
 port_B: equ CTRL-2
@@ -30,6 +31,8 @@ port_C: equ CTRL-1
   jr z, skan_d ; dalej
        ; znaleziono urzadzenie
   ld A, L
+  cp #E ; znaczy brak urzadzenia
+  jp z, no_a
   rst 18h ; wysw. rej. A
   defb 23h ; PWYSW
   inc A
@@ -143,3 +146,14 @@ port_C: equ CTRL-1
  halt
  halt
  ret
+
+no_A: ; gdy blad ACK
+  ld hl, no_ACK
+  call print
+  defb 80h
+  rst 8 ; CF - czekaj na klawisz
+  jp skan
+
+  defb 0DDh, 0E2h ; marker nazwy
+  defm " SKANER iiC PC 0_4", 255
+no_ACK:     defb 54h, 0DCh,5Eh, 79h, 1Ch, 6, 39h, 79h, 255  ; "no.deviCE" dla ca80
