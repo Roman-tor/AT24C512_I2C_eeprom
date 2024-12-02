@@ -6,7 +6,7 @@ CIM:      EQU 0184h ;                                    CY=0 klawisz puszczony
 PRINT:    EQU 1D4h  ; wysw. komunikatu wg (HL) plus PWYS
 PARAM:    EQU 01F4h ; pobiera bajty do hl, podac PWYS
 EXPR:     EQU 0213h ; pob. liczb na stos, rej. C ile
-PA:       EQU 0E0h ; port uzytkownika; jesli dolozymy nastepna plytke MIK 89_TURBO, zmieniamy E0 na
+PA:       EQU 0E0h ; port użytkownika; jesli dolozymy nastepna plytke MIK 89_TURBO, zmieniamy E0 na
 PB:       EQU PA+1                         ;wlasciwy adres /E4 lub E8/, wg zworki J3
 PC:       EQU PA+2
 CONTR:    EQU PA+3 ; slowo kontrolne
