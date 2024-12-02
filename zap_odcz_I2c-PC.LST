@@ -1,4 +1,4 @@
-00000h                                                           ; zapis / odczyt pamieci AT24Cxxx -I2C, podlacz.-SCL-PC.4, SDA- PC.0 portu uzytkownika 8255
+00000h   suma kontr. C000 - C1E7 = 12D2                          ; zapis / odczyt pamieci AT24Cxxx -I2C, podlacz.-SCL-PC.4, SDA- PC.0 portu uzytkownika 8255
 00000h                                                           ; PC.0  SDA-pin 18 ZU50, PC.4 SCL-pin 22  dla ZU50 lub /SDA-14a, SCL 13a dla ZU64 /
 00000h            CI:                   EQU       0FFC6H         ; CI - pobranie znaku z klawiatury; czekanie az puszczony a nastepnie wcisniety
 00000h            CSTS:                 EQU       0FFC3H         ; badanie, czy klawisz wcisniety? CY=1 wcisniety, A-kod tablicowy klawisza
@@ -77,7 +77,7 @@
 0C05Dh                                                           ; sprawdzenie czy koniec strony zapisu EEPROM
 0C05Dh DD7D                             LD        A,IXL          ;dfb 0ddh, 7dh ;  ld ml. bity IX do A
 0C05Fh E61F                             AND       1FH            ; sprawdz mlodsze bity i 4. bit /koniec str. co 32/20h bajty
-0C061h                                                           ; 3Fh - co 64/40h bajty, 7Fh - co 128/80h bajtów, FF - co 256/FFh bajtów
+0C061h                                                           ; 3Fh - co 64/40h bajty, 7Fh - co 128/80h bajtÃ³w, FF - co 256/FFh bajtÃ³w
 0C061h FE00                             CP        0H
 0C063h 20EC                             JR        NZ,ZAP1
 0C065h                                                           ; koniec strony: 0,20, 40, itd, przystosowane do EEPROM DS3231 8- kB, 32 kB, 64kB
@@ -121,7 +121,7 @@
 0C0A5h CDEFC0                           CALL      START_I2C      ; ponowny start_I2C
 0C0A8h 1EA1                             LD        E,ZAP_EEP+1    ; ustaw pamiec na odczyt np. A1
 0C0AAh CD14C1                           CALL      ZAP_BAJT
-0C0ADh C1                               POP       BC             ; odtwórz ilosc bajtow do odczytu
+0C0ADh C1                               POP       BC             ; odtwÃ³rz ilosc bajtow do odczytu
 0C0AEh            CZYT_BAJTY:                     
 0C0AEh CD53C1                           CALL      CZYT_BAJT      ; odczytuje bajt i zapisuje w RAM CA80 wg (IX)
 0C0B1h CD7CC1                           CALL      M_ACK          ; wystaw ACK
@@ -174,7 +174,7 @@
 0C0EFh            START_I2C:                                     ; procedura START dla urzadzenia z I2C
 0C0EFh 0EE3                             LD        C,CONTR
 0C0F1h            START_E:                        
-0C0F1h 3E9B                             LD        A,9BH          ; konfiguracja portów  PA, PB i PC WEJ
+0C0F1h 3E9B                             LD        A,9BH          ; konfiguracja portÃ³w  PA, PB i PC WEJ
 0C0F3h ED79                             OUT       (C),A
 0C0F5h 00                               NOP       
 0C0F6h 3E8A                             LD        A,8AH          ; PA i PB WYJ, PC0-3 - WYJ, PC4-7 WEJ
@@ -203,9 +203,9 @@
 0C114h                                                           ; PC4/SCL, PC0/SDA, jesli PA, PC jako WEJSCIE
 0C114h C5                               PUSH      BC
 0C115h D5                               PUSH      DE
-0C116h                                                           ;ld a, (CONTR) ; rej. C - wybór portu - E3 (zlacze uzytk.) lub E7 (dodatkowe)
+0C116h                                                           ;ld a, (CONTR) ; rej. C - wybÃ³r portu - E3 (zlacze uzytk.) lub E7 (dodatkowe)
 0C116h 0EE3                             LD        C,CONTR
-0C118h 1608                             LD        D,08H          ;ilosc bitów
+0C118h 1608                             LD        D,08H          ;ilosc bitÃ³w
 0C11Ah            ZAP:                            
 0C11Ah 7B                               LD        A,E            ; odtworzenie danej do wpisu
 0C11Bh 07                               RLCA                     ; przesun na lewo /na znacznik C/
@@ -223,7 +223,7 @@
 0C12Bh ED79                             OUT       (C),A
 0C12Dh 00                               NOP       
 0C12Eh C5                               PUSH      BC
-0C12Fh 06FF                             LD        B,0FFH         ; ilosc prób sprawdz. ACK
+0C12Fh 06FF                             LD        B,0FFH         ; ilosc prÃ³b sprawdz. ACK
 0C131h            ACK_0:                          
 0C131h 05                               DEC       B
 0C132h CAA3C1                           JP        Z,BLAD_ACK
@@ -257,19 +257,19 @@
 0C156h                                                           ;    CZYT1:
 0C156h 3E90                             LD        A,90H          ; PA WEJ, PC WYJ SDA "1" SCL "0"
 0C158h ED79                             OUT       (C),A
-0C15Ah 1608                             LD        D,8            ; D - il. bitów = 8, E - jako bufor do odbieranych bitów = 0
-0C15Ch            CZYT:                                          ; mo¿e byæ tylko ld d, 8  bo rej E "idzie" od zera
+0C15Ah 1608                             LD        D,8            ; D - il. bitÃ³w = 8, E - jako bufor do odbieranych bitÃ³w = 0
+0C15Ch            CZYT:                                          ; moÅ¼e byÄ‡ tylko ld d, 8  bo rej E "idzie" od zera
 0C15Ch CD73C1                           CALL      SCLH           ; ustaw SCL na H
 0C15Fh 00                               NOP       
 0C160h 00                               NOP                      ; opoznienie
 0C161h DBE2                             IN        A,(P_SDA)      ; odczyt portu
 0C163h 0F                               RRCA                     ; przesun na CY
-0C164h CB13                             RL        E              ; przesuñ CY na bit 0 rej. E
+0C164h CB13                             RL        E              ; przesuÅ„ CY na bit 0 rej. E
 0C166h CD78C1                           CALL      SCLL           ; ustaw SCL na L
 0C169h 15                               DEC       D
 0C16Ah 20F0                             JR        NZ,CZYT        ; czy ostatni bit?
-0C16Ch DD7300                           LD        (IX+0H),E      ; zapisanie w pamiêci
-0C16Fh DD23                             INC       IX             ; ustaw RAM na zapis nastêpnego bajtu
+0C16Ch DD7300                           LD        (IX+0H),E      ; zapisanie w pamiÄ™ci
+0C16Fh DD23                             INC       IX             ; ustaw RAM na zapis nastÄ™pnego bajtu
 0C171h C1                               POP       BC
 0C172h C9                               RET       
 0C173h            SCLH:                                          ; SCL /Port PC4/ na H
@@ -287,7 +287,7 @@
 0C17Dh 0EE3                             LD        C,CONTR        ; np. E3,E8 lub EC
 0C17Fh                                                           ;m_ack1:
 0C17Fh 3E80                             LD        A,80H          ; PA, PB, PC - WYJ, stan L
-0C181h ED79                             OUT       (C),A          ; ustaw SDA na L /czytaj nastêpne bajty
+0C181h ED79                             OUT       (C),A          ; ustaw SDA na L /czytaj nastÄ™pne bajty
 0C183h CD49C1                           CALL      CLK
 0C186h 00                               NOP                      ; opoznienie
 0C187h C1                               POP       BC
@@ -312,7 +312,7 @@
 0C1A3h            BLAD_ACK:                                      ; jesli po 255 probach EEPROM sie nie zglosi
 0C1A3h D5                               PUSH      DE             ; ochrona E
 0C1A4h 21E3C1                           LD        HL,NO_ACK      ;  "no_ACK"
-0C1A7h CDD401                           CALL      PRINT          ; wyœw. "no ACK" na ca80
+0C1A7h CDD401                           CALL      PRINT          ; wyÂœw. "no ACK" na ca80
 0C1AAh 44                               DEFB      44H            ; PWYSW
 0C1ABh 3EE3                             LD        A,CONTR
 0C1ADh 6F                               LD        L,A            ; "adres pamieci"
