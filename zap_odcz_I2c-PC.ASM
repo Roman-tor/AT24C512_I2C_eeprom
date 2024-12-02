@@ -1,4 +1,4 @@
-  ; zapis / odczyt pamieci AT24Cxxx -I2C, podlacz.-SCL-PC.4, SDA- PC.0 portu uzytkownika 8255
+suma kontr. C000 - C1E7 = 12D2  ; zapis / odczyt pamieci AT24Cxxx -I2C, podlacz.-SCL-PC.4, SDA- PC.0 portu uzytkownika 8255
   ; PC.0  SDA-pin 18, PC.4 SCL-pin 22 dla ZU50 lub /SDA-14a, SCL 13a dla ZU64 /
 CI:       EQU 0FFC6h; CI - pobranie znaku z klawiatury; czekanie az puszczony a nastepnie wcisniety
 CSTS:     EQU 0FFC3h ; badanie, czy klawisz wcisniety? CY=1 wcisniety, A-kod tablicowy klawisza
@@ -77,7 +77,7 @@ zap_EEPROM: ; zapis bajtow do EEPROM
      ; sprawdzenie czy koniec strony zapisu EEPROM
   ld a, IXL ;dfb 0ddh, 7dh ;  ld ml. bity IX do A
   and 1Fh ; sprawdz mlodsze bity i 4. bit /koniec str. co 32/20h bajty
-         ; 3Fh - co 64/40h bajty, 7Fh - co 128/80h bajtów, FF - co 256/FFh bajtów
+         ; 3Fh - co 64/40h bajty, 7Fh - co 128/80h bajtÃ³w, FF - co 256/FFh bajtÃ³w
   cp 0h
   jr nz, zap1
       ; koniec strony: 0,20, 40, itd, przystosowane do EEPROM DS3231 8- kB, 32 kB, 64kB
@@ -121,7 +121,7 @@ odczyt: ; odczyt pamieci AT24Cxxx /8-64kB/
   CALL start_I2C ; ponowny start_I2C
   LD E, zap_EEP+1 ; ustaw pamiec na odczyt np. A1
   call zap_bajt
-  pop bc ; odtwórz ilosc bajtow do odczytu
+  pop bc ; odtwÃ³rz ilosc bajtow do odczytu
 czyt_bajty:
   CALL CZYT_BAJT; odczytuje bajt i zapisuje w RAM CA80 wg (IX)
   CALL M_ACK; wystaw ACK
@@ -174,7 +174,7 @@ wpisz_adr: ; wpis adresu poczatkowego zapisu
 start_I2C: ; procedura START dla urzadzenia z I2C
   ld c, CONTR
  start_E:
-  ld a, 9Bh ; konfiguracja portów  PA, PB i PC WEJ
+  ld a, 9Bh ; konfiguracja portÃ³w  PA, PB i PC WEJ
   out (C), a
   nop
   ld a, 8Ah ; PA i PB WYJ, PC0-3 - WYJ, PC4-7 WEJ
@@ -203,9 +203,9 @@ ZAP_BAJT: ; wpis bajtu do EEPROM, w E dana do zapisu
           ; PC4/SCL, PC0/SDA, jesli PA, PC jako WEJSCIE
   push bc
   push de
-  ;ld a, (CONTR) ; rej. C - wybór portu - E3 (zlacze uzytk.) lub E7 (dodatkowe)
+  ;ld a, (CONTR) ; rej. C - wybÃ³r portu - E3 (zlacze uzytk.) lub E7 (dodatkowe)
   ld C, CONTR
-  LD D, 08H  ;ilosc bitów
+  LD D, 08H  ;ilosc bitÃ³w
  ZAP:
   LD A, E  ; odtworzenie danej do wpisu
   RLCA     ; przesun na lewo /na znacznik C/
@@ -223,7 +223,7 @@ ZAP_BAJT: ; wpis bajtu do EEPROM, w E dana do zapisu
   OUT (C), A
   NOP
   push bc
-  ld b, 0FFh ; ilosc prób sprawdz. ACK
+  ld b, 0FFh ; ilosc prÃ³b sprawdz. ACK
  ACK_0:
   dec b
   jp z, blad_ack
@@ -257,19 +257,19 @@ CZYT_BAJT: ; odczyt bajtu i zapis do RAM wg (IX)
  ;    CZYT1:
   LD A, 90H ; PA WEJ, PC WYJ SDA "1" SCL "0"
   OUT (C), A
-  ld d, 8; D - il. bitów = 8, E - jako bufor do odbieranych bitów = 0
-  CZYT:    ; mo¿e byæ tylko ld d, 8  bo rej E "idzie" od zera
+  ld d, 8; D - il. bitÃ³w = 8, E - jako bufor do odbieranych bitÃ³w = 0
+  CZYT:    ; moÅ¼e byÄ‡ tylko ld d, 8  bo rej E "idzie" od zera
   CALL SCLH ; ustaw SCL na H
   nop
   nop    ; opoznienie
   IN A, (P_SDA) ; odczyt portu
   rrca ; przesun na CY
-  rl e  ; przesuñ CY na bit 0 rej. E
+  rl e  ; przesuÅ„ CY na bit 0 rej. E
   CALL SCLL ; ustaw SCL na L
   DEC D
   JR NZ, CZYT  ; czy ostatni bit?
-  LD (IX+0H), E  ; zapisanie w pamiêci
-  INC IX  ; ustaw RAM na zapis nastêpnego bajtu
+  LD (IX+0H), E  ; zapisanie w pamiÄ™ci
+  INC IX  ; ustaw RAM na zapis nastÄ™pnego bajtu
   pop bc
   RET
  SCLH:  ; SCL /Port PC4/ na H
@@ -287,7 +287,7 @@ M_ACK: ; Master /CA80/ wystawia ACK /"0"/ na SDA
   ld c, contr ; np. E3,E8 lub EC
 ;m_ack1:
   LD A, 80H ; PA, PB, PC - WYJ, stan L
-  OUT (C), A ; ustaw SDA na L /czytaj nastêpne bajty
+  OUT (C), A ; ustaw SDA na L /czytaj nastÄ™pne bajty
   CALL CLK
   NOP ; opoznienie
   pop bc
@@ -312,7 +312,7 @@ RESET: ; reset pamieci AT24C16/512
 blad_ACK: ; jesli po 255 probach EEPROM sie nie zglosi
   push de ; ochrona E
   ld hl, no_ack ;  "no_ACK"
-  call PRINT ; wyœw. "no ACK" na ca80
+  call PRINT ; wyÂœw. "no ACK" na ca80
   defb 44h ; PWYSW
    ld a, CONTR
   ld L, a  ; "adres pamieci"
